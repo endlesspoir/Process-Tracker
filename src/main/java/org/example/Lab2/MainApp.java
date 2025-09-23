@@ -100,15 +100,23 @@ public class MainApp extends Application {
         resultArea.appendText("Время (многопоточно, " + maxThreads + " потоков): " + multiThreadTime + " мс\n\n");
         pool.shutdown();
 
-        // График 1: зависимость времени от числа потоков
-        XYChart.Series<Number, Number> threadSeries = CalculationTask.measureThreads(a, K, deltaThreads, maxThreads);
 
-        // График 2: зависимость времени от K
-        XYChart.Series<Number, Number> kSeries = CalculationTask.measureK(a, K, deltaK, maxThreads);
 
-        // Открыть графики
-        ChartUtils.showChart("График 1: Время vs Потоки", "Потоки", "Время (мс)", threadSeries);
-        ChartUtils.showChart("График 2: Время vs K", "K", "Время (мс)", kSeries);
+// замени на:
+        XYChart.Series<Number, Number>[] threadSeriesArr = CalculationTask.measureThreads(a, K, deltaThreads, maxThreads);
+        XYChart.Series<Number, Number>[] kSeriesArr = CalculationTask.measureK(a, K, deltaK, maxThreads);
+
+// Передаём обе серии на каждый график (ChartUtils.showChart принимает varargs)
+        ChartUtils.showChart("График 1: Время vs Потоки", "Потоки", "Время (мс)",
+                threadSeriesArr[0], // однопоточно
+                threadSeriesArr[1]  // многопоточно
+        );
+
+        ChartUtils.showChart("График 2: Время vs K", "K", "Время (мс)",
+                kSeriesArr[0], // однопоточно
+                kSeriesArr[1]  // многопоточно
+        );
+
     }
 
     public static void main(String[] args) {

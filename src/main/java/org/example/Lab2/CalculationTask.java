@@ -52,37 +52,76 @@ public class CalculationTask {
         return b;
     }
 
-    public static XYChart.Series<Number, Number> measureThreads(double[] a, int K, int deltaThreads, int maxThreads) {
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.setName("Зависимость от потоков");
+    // возвращает массив из двух серий: [0] - однопоточно, [1] - многопоточно
+    public static XYChart.Series<Number, Number>[] measureThreads(double[] a, int K, int deltaThreads, int maxThreads) {
+        @SuppressWarnings("unchecked")
+        XYChart.Series<Number, Number>[] result = new XYChart.Series[2];
 
-        for (int t = 1; t <= maxThreads; t += deltaThreads) {
+        XYChart.Series<Number, Number> singleSeries = new XYChart.Series<>();
+        singleSeries.setName("Однопоточно");
+
+        XYChart.Series<Number, Number> multiSeries = new XYChart.Series<>();
+        multiSeries.setName("Многопоточно");
+
+        // Для честности измерений мы используем один и тот же массив a (только чтение).
+        // Если вычисления изменяют исходные данные — нужно копию, но в нашем случае a не меняется.
+        for (int t = 1; t <= maxThreads; t += Math.max(1, deltaThreads)) {
+            // Однопоточно (время выполнения полного прохода)
+            long startSingle = System.nanoTime();
+            singleThreadCalc(a, K);
+            long endSingle = System.nanoTime();
+            long msSingle = (endSingle - startSingle) / 1_000_000;
+            singleSeries.getData().add(new XYChart.Data<>(t, msSingle));
+
+            // Многопоточно (t потоков)
             ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(t);
-            long start = System.nanoTime();
+            long startMulti = System.nanoTime();
             multiThreadCalc(a, K, t, pool);
-            long end = System.nanoTime();
+            long endMulti = System.nanoTime();
             pool.shutdown();
-
-            long ms = (end - start) / 1_000_000;
-            series.getData().add(new XYChart.Data<>(t, ms));
+            long msMulti = (endMulti - startMulti) / 1_000_000;
+            multiSeries.getData().add(new XYChart.Data<>(t, msMulti));
         }
-        return series;
+
+        result[0] = singleSeries;
+        result[1] = multiSeries;
+        return result;
     }
 
-    public static XYChart.Series<Number, Number> measureK(double[] a, int baseK, int deltaK, int threads) {
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.setName("Зависимость от K");
+    public static XYChart.Series<Number, Number>[] measureK(double[] a, int baseK, int deltaK, int threads) {
+        @SuppressWarnings("unchecked")
+        XYChart.Series<Number, Number>[] result = new XYChart.Series[2];
 
-        for (int k = deltaK; k <= baseK * 2; k += deltaK) {
-            ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
-            long start = System.nanoTime();
-            multiThreadCalc(a, k, threads, pool);
-            long end = System.nanoTime();
+        XYChart.Series<Number, Number> singleSeries = new XYChart.Series<>();
+        singleSeries.setName("Однопоточно");
+
+        XYChart.Series<Number, Number> multiSeries = new XYChart.Series<>();
+        multiSeries.setName("Многопоточно");
+
+        // Начнём с K = deltaK (или 1 если deltaK==0), пробегая до baseK*2 (как у тебя было)
+        int step = Math.max(1, deltaK);
+        int maxK = Math.max(baseK, 1) * 2;
+        for (int k = step; k <= maxK; k += step) {
+            // Однопоточно
+            long startSingle = System.nanoTime();
+            singleThreadCalc(a, k);
+            long endSingle = System.nanoTime();
+            long msSingle = (endSingle - startSingle) / 1_000_000;
+            singleSeries.getData().add(new XYChart.Data<>(k, msSingle));
+
+            // Многопоточно (фиксированное число потоков = threads)
+            ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(Math.max(1, threads));
+            long startMulti = System.nanoTime();
+            multiThreadCalc(a, k, Math.max(1, threads), pool);
+            long endMulti = System.nanoTime();
             pool.shutdown();
-
-            long ms = (end - start) / 1_000_000;
-            series.getData().add(new XYChart.Data<>(k, ms));
+            long msMulti = (endMulti - startMulti) / 1_000_000;
+            multiSeries.getData().add(new XYChart.Data<>(k, msMulti));
         }
-        return series;
+
+        result[0] = singleSeries;
+        result[1] = multiSeries;
+        return result;
     }
+
 }
