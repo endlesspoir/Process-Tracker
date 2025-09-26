@@ -43,7 +43,7 @@ public class MainApp extends Application {
         TableColumn<ProcessInfo, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
 
-        TableColumn<ProcessInfo, Long> memCol = new TableColumn<>("Memory (KB)");
+        TableColumn<ProcessInfo, Float> memCol = new TableColumn<>("Memory (KB)");
         memCol.setCellValueFactory(new PropertyValueFactory<>("memory"));
 
         TableColumn<ProcessInfo, Number> priorityCol = new TableColumn<>("Priority (0-5)");
@@ -100,6 +100,7 @@ public class MainApp extends Application {
         }, 0, 3000);
     }
 
+    //получаем процессы и преобразуем
     private void updateTable() {
         SystemInfo si = new SystemInfo();
         OperatingSystem os = si.getOperatingSystem();
@@ -134,6 +135,7 @@ public class MainApp extends Application {
         return (int) Math.round((sysPriority - min) / (double)(max - min) * 5);
     }
 
+    //вывод окна потоков
     private void showThreadsWindow(long pid) {
         Stage stage = new Stage();
         TableView<ThreadInfo> threadTable = new TableView<>();

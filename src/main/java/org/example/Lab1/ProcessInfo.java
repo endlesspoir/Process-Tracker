@@ -11,7 +11,7 @@ public class ProcessInfo {
     private long pid;
     private String user;
     private String name;
-    private long memory;
+    private float memory;
     private  int priority;
     private int threads;
 }
