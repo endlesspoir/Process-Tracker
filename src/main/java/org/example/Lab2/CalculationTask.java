@@ -6,8 +6,19 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+/**
+ * Утилитарный класс для генерации массива случайных чисел и проведения вычислительных экспериментов
+ * (сравнение времени выполнения однопоточных и многопоточных вычислений).
+ * Используется для построения графиков зависимости времени выполнения от количества потоков или параметра K.
+ */
 public class CalculationTask {
 
+    /**
+     * Генерация массива случайных чисел от 0 до 100.
+     *
+     * @param n размер массива
+     * @return массив double длиной n
+     */
     public static double[] generateArray(int n) {
         Random rand = new Random();
         double[] arr = new double[n];
@@ -17,6 +28,15 @@ public class CalculationTask {
         return arr;
     }
 
+    /**
+     * Однопоточные вычисления.
+     * Для каждого элемента массива выполняется K повторений возведения в степень 1.789
+     * и суммирования результата.
+     *
+     * @param a массив входных чисел
+     * @param K количество повторений операции
+     * @return массив результатов той же длины
+     */
     public static double[] singleThreadCalc(double[] a, int K) {
         double[] b = new double[a.length];
         for (int i = 0; i < a.length; i++) {
@@ -27,6 +47,16 @@ public class CalculationTask {
         return b;
     }
 
+    /**
+     * Многопоточные вычисления.
+     * Массив делится на равные части (chunk) и обрабатывается указанным количеством потоков.
+     *
+     * @param a       массив входных чисел
+     * @param K       количество повторений операции
+     * @param threads количество потоков
+     * @param pool    пул потоков (ExecutorService)
+     * @return массив результатов той же длины
+     */
     public static double[] multiThreadCalc(double[] a, int K, int threads, ExecutorService pool) {
         double[] b = new double[a.length];
         int chunk = (int) Math.ceil(a.length / (double) threads);
@@ -37,6 +67,7 @@ public class CalculationTask {
                 final int start = t * chunk;
                 final int end = Math.min(a.length, (t + 1) * chunk);
 
+                // Каждому потоку достаётся свой диапазон элементов массива
                 futures[t] = pool.submit(() -> {
                     for (int i = start; i < end; i++) {
                         for (int j = 0; j < K; j++) {
@@ -45,6 +76,7 @@ public class CalculationTask {
                     }
                 });
             }
+            // Дожидаемся завершения всех потоков
             for (Future<?> f : futures) f.get();
         } catch (Exception e) {
             e.printStackTrace();
@@ -52,7 +84,11 @@ public class CalculationTask {
         return b;
     }
 
-    // возвращает массив из двух серий: [0] - однопоточно, [1] - многопоточно
+    /**
+     * Измерение времени выполнения при разном числе потоков.
+     * Возвращает массив из двух серий данных для графика: [0] — однопоточные, [1] — многопоточные.
+     * По оси X откладывается количество потоков, по оси Y — время выполнения в миллисекундах.
+     */
     public static XYChart.Series<Number, Number>[] measureThreads(double[] a, int K, int deltaThreads, int maxThreads) {
         @SuppressWarnings("unchecked")
         XYChart.Series<Number, Number>[] result = new XYChart.Series[2];
@@ -63,17 +99,16 @@ public class CalculationTask {
         XYChart.Series<Number, Number> multiSeries = new XYChart.Series<>();
         multiSeries.setName("Многопоточно");
 
-        // Для честности измерений мы используем один и тот же массив a (только чтение).
-        // Если вычисления изменяют исходные данные — нужно копию, но в нашем случае a не меняется.
+        // Перебираем количество потоков от 1 до maxThreads, с шагом deltaThreads (минимум 1)
         for (int t = 1; t <= maxThreads; t += Math.max(1, deltaThreads)) {
-            // Однопоточно (время выполнения полного прохода)
+            // Измеряем время однопоточного выполнения
             long startSingle = System.nanoTime();
             singleThreadCalc(a, K);
             long endSingle = System.nanoTime();
             long msSingle = (endSingle - startSingle) / 1_000_000;
             singleSeries.getData().add(new XYChart.Data<>(t, msSingle));
 
-            // Многопоточно (t потоков)
+            // Измеряем время многопоточного выполнения с t потоками
             ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(t);
             long startMulti = System.nanoTime();
             multiThreadCalc(a, K, t, pool);
@@ -88,6 +123,11 @@ public class CalculationTask {
         return result;
     }
 
+    /**
+     * Измерение времени выполнения при разных значениях параметра K (число повторов операции).
+     * Возвращает массив из двух серий данных для графика: [0] — однопоточные, [1] — многопоточные.
+     * По оси X откладывается K, по оси Y — время выполнения в миллисекундах.
+     */
     public static XYChart.Series<Number, Number>[] measureK(double[] a, int baseK, int deltaK, int threads) {
         @SuppressWarnings("unchecked")
         XYChart.Series<Number, Number>[] result = new XYChart.Series[2];
@@ -98,18 +138,18 @@ public class CalculationTask {
         XYChart.Series<Number, Number> multiSeries = new XYChart.Series<>();
         multiSeries.setName("Многопоточно");
 
-        // Начнём с K = deltaK (или 1 если deltaK==0), пробегая до baseK*2 (как у тебя было)
+        // Перебираем значения K от deltaK (или 1) до baseK*2, с шагом deltaK (минимум 1)
         int step = Math.max(1, deltaK);
         int maxK = Math.max(baseK, 1) * 2;
         for (int k = step; k <= maxK; k += step) {
-            // Однопоточно
+            // Измеряем время однопоточного выполнения
             long startSingle = System.nanoTime();
             singleThreadCalc(a, k);
             long endSingle = System.nanoTime();
             long msSingle = (endSingle - startSingle) / 1_000_000;
             singleSeries.getData().add(new XYChart.Data<>(k, msSingle));
 
-            // Многопоточно (фиксированное число потоков = threads)
+            // Измеряем время многопоточного выполнения (фиксированное число потоков)
             ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(Math.max(1, threads));
             long startMulti = System.nanoTime();
             multiThreadCalc(a, k, Math.max(1, threads), pool);
