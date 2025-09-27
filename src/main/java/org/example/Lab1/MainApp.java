@@ -26,7 +26,7 @@ public class MainApp extends Application {
     public static void main(String[] args) {
         launch(args);
     }
-
+    //таймер обработать в процесс
     @Override
     public void start(Stage primaryStage) {
         totalLabel = new Label("Total processes: 0");
@@ -107,12 +107,12 @@ public class MainApp extends Application {
 
         List<OSProcess> processes = os.getProcesses(
                 p -> true,
-                Comparator.comparingInt(OSProcess::getProcessID),
+                Comparator.comparing(OSProcess::getName),
                 Integer.MAX_VALUE
         );
 
         List<ProcessInfo> data = processes.stream()
-                .map(p -> new ProcessInfo(
+                .map(p -> ProcessInfo.from(
                         p.getProcessID(),
                         p.getUser(),
                         p.getName(),
